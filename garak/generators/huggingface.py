@@ -47,6 +47,10 @@ class HFInternalServerError(GarakException):
 
 
 class HFCompatible:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.hf_token = os.environ.get('HF_TOKEN') or os.environ.get('HF_INFERENCE_TOKEN')
+    
     def _set_hf_context_len(self, config):
         if hasattr(config, "n_ctx"):
             if isinstance(config.n_ctx, int):
@@ -168,6 +172,10 @@ class Pipeline(Generator, HFCompatible):
             set_seed(_config.run.seed)
 
         pipeline_kwargs = self._gather_hf_params(hf_constructor=pipeline)
+
+        if self.hf_token:
+            pipeline_kwargs['token'] = self.hf_token
+     
         self.generator = pipeline("text-generation", **pipeline_kwargs)
         if not hasattr(self, "deprefix_prompt"):
             self.deprefix_prompt = self.name in models_to_deprefix
@@ -533,7 +541,10 @@ class Model(Pipeline, HFCompatible):
         model_kwargs = self._gather_hf_params(
             hf_constructor=transformers.AutoConfig.from_pretrained
         )  # will defer to device_map if device map was `auto` may not match self.device
-
+        
+        if self.hf_token:
+            model_kwargs['token'] = self.hf_token
+     
         self.config = transformers.AutoConfig.from_pretrained(
             self.name, trust_remote_code=trust_remote_code, **model_kwargs
         )
@@ -650,6 +661,9 @@ class LLaVA(Generator, HFCompatible):
             hf_constructor=LlavaNextForConditionalGeneration.from_pretrained
         )  # will defer to device_map if device map was `auto` may not match self.device
 
+        if self.hf_token:
+            model_kwargs['token'] = self.hf_token
+        
         self.processor = LlavaNextProcessor.from_pretrained(self.name)
         self.model = LlavaNextForConditionalGeneration.from_pretrained(
             self.name, **model_kwargs
