@@ -158,6 +158,7 @@ class Pipeline(Generator, HFCompatible):
         import torch.multiprocessing as mp
 
         mp.set_start_method("spawn", force=True)
+        self.hf_token = os.environ.get('HF_TOKEN') or os.environ.get('HF_INFERENCE_TOKEN')
 
         self.device = self._select_hf_device()
         self._load_client()
